@@ -16,41 +16,23 @@ import * as errors from "../../errors";
 import { Request } from "express";
 import { plainToClass } from "class-transformer";
 import { ApiNestedQuery } from "../../decorators/api-nested-query.decorator";
-import * as nestAccessControl from "nest-access-control";
-import * as defaultAuthGuard from "../../auth/defaultAuth.guard";
+import { GrpcMethod } from "@nestjs/microservices";
 import { CustomerService } from "../customer.service";
-import { AclValidateRequestInterceptor } from "../../interceptors/aclValidateRequest.interceptor";
-import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
 import { CustomerCreateInput } from "./CustomerCreateInput";
-import { Customer } from "./Customer";
-import { CustomerFindManyArgs } from "./CustomerFindManyArgs";
+import { CustomerWhereInput } from "./CustomerWhereInput";
 import { CustomerWhereUniqueInput } from "./CustomerWhereUniqueInput";
+import { CustomerFindManyArgs } from "./CustomerFindManyArgs";
 import { CustomerUpdateInput } from "./CustomerUpdateInput";
+import { Customer } from "./Customer";
 import { OrderFindManyArgs } from "../../order/base/OrderFindManyArgs";
 import { Order } from "../../order/base/Order";
 import { OrderWhereUniqueInput } from "../../order/base/OrderWhereUniqueInput";
 
-@swagger.ApiBearerAuth()
-@common.UseGuards(defaultAuthGuard.DefaultAuthGuard, nestAccessControl.ACGuard)
-export class CustomerControllerBase {
-  constructor(
-    protected readonly service: CustomerService,
-    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
-  ) {}
-  @common.UseInterceptors(AclValidateRequestInterceptor)
+export class CustomerGrpcControllerBase {
+  constructor(protected readonly service: CustomerService) {}
   @common.Post()
   @swagger.ApiCreatedResponse({ type: Customer })
-  @nestAccessControl.UseRoles({
-    resource: "Customer",
-    action: "create",
-    possession: "any",
-  })
-  @swagger.ApiForbiddenResponse({
-    type: errors.ForbiddenException,
-  })
-  @swagger.ApiBody({
-    type: CustomerCreateInput,
-  })
+  @GrpcMethod("CustomerService", "createCustomer")
   async createCustomer(
     @common.Body() data: CustomerCreateInput
   ): Promise<Customer> {
@@ -82,18 +64,10 @@ export class CustomerControllerBase {
     });
   }
 
-  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get()
   @swagger.ApiOkResponse({ type: [Customer] })
   @ApiNestedQuery(CustomerFindManyArgs)
-  @nestAccessControl.UseRoles({
-    resource: "Customer",
-    action: "read",
-    possession: "any",
-  })
-  @swagger.ApiForbiddenResponse({
-    type: errors.ForbiddenException,
-  })
+  @GrpcMethod("CustomerService", "customers")
   async customers(@common.Req() request: Request): Promise<Customer[]> {
     const args = plainToClass(CustomerFindManyArgs, request.query);
     return this.service.customers({
@@ -116,18 +90,10 @@ export class CustomerControllerBase {
     });
   }
 
-  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id")
   @swagger.ApiOkResponse({ type: Customer })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
-  @nestAccessControl.UseRoles({
-    resource: "Customer",
-    action: "read",
-    possession: "own",
-  })
-  @swagger.ApiForbiddenResponse({
-    type: errors.ForbiddenException,
-  })
+  @GrpcMethod("CustomerService", "customer")
   async customer(
     @common.Param() params: CustomerWhereUniqueInput
   ): Promise<Customer | null> {
@@ -157,21 +123,10 @@ export class CustomerControllerBase {
     return result;
   }
 
-  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Patch("/:id")
   @swagger.ApiOkResponse({ type: Customer })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
-  @nestAccessControl.UseRoles({
-    resource: "Customer",
-    action: "update",
-    possession: "any",
-  })
-  @swagger.ApiForbiddenResponse({
-    type: errors.ForbiddenException,
-  })
-  @swagger.ApiBody({
-    type: CustomerUpdateInput,
-  })
+  @GrpcMethod("CustomerService", "updateCustomer")
   async updateCustomer(
     @common.Param() params: CustomerWhereUniqueInput,
     @common.Body() data: CustomerUpdateInput
@@ -217,14 +172,7 @@ export class CustomerControllerBase {
   @common.Delete("/:id")
   @swagger.ApiOkResponse({ type: Customer })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
-  @nestAccessControl.UseRoles({
-    resource: "Customer",
-    action: "delete",
-    possession: "any",
-  })
-  @swagger.ApiForbiddenResponse({
-    type: errors.ForbiddenException,
-  })
+  @GrpcMethod("CustomerService", "deleteCustomer")
   async deleteCustomer(
     @common.Param() params: CustomerWhereUniqueInput
   ): Promise<Customer | null> {
@@ -257,15 +205,10 @@ export class CustomerControllerBase {
     }
   }
 
-  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id/orders")
   @ApiNestedQuery(OrderFindManyArgs)
-  @nestAccessControl.UseRoles({
-    resource: "Order",
-    action: "read",
-    possession: "any",
-  })
-  async findOrders(
+  @GrpcMethod("CustomerService", "findManyOrders")
+  async findManyOrders(
     @common.Req() request: Request,
     @common.Param() params: CustomerWhereUniqueInput
   ): Promise<Order[]> {
@@ -304,11 +247,7 @@ export class CustomerControllerBase {
   }
 
   @common.Post("/:id/orders")
-  @nestAccessControl.UseRoles({
-    resource: "Customer",
-    action: "update",
-    possession: "any",
-  })
+  @GrpcMethod("CustomerService", "connectOrders")
   async connectOrders(
     @common.Param() params: CustomerWhereUniqueInput,
     @common.Body() body: OrderWhereUniqueInput[]
@@ -326,11 +265,7 @@ export class CustomerControllerBase {
   }
 
   @common.Patch("/:id/orders")
-  @nestAccessControl.UseRoles({
-    resource: "Customer",
-    action: "update",
-    possession: "any",
-  })
+  @GrpcMethod("CustomerService", "updateOrders")
   async updateOrders(
     @common.Param() params: CustomerWhereUniqueInput,
     @common.Body() body: OrderWhereUniqueInput[]
@@ -348,11 +283,7 @@ export class CustomerControllerBase {
   }
 
   @common.Delete("/:id/orders")
-  @nestAccessControl.UseRoles({
-    resource: "Customer",
-    action: "update",
-    possession: "any",
-  })
+  @GrpcMethod("CustomerService", "disconnectOrders")
   async disconnectOrders(
     @common.Param() params: CustomerWhereUniqueInput,
     @common.Body() body: OrderWhereUniqueInput[]
